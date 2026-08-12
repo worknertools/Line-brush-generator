@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Type play</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短碎排线风格生成器 - 极致一致版</title>
+    <!-- 基础库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            margin: 0; display: flex; flex-direction: row; 
+            background-color: #f5f5f5; color: #333; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh; overflow: hidden; 
+        }
+        
+        #canvas-container { 
+            flex-grow: 1; display: flex; justify-content: center; align-items: center; 
+            background-color: #e0e0e0; position: relative; 
+        }
+        
+        #controls { 
+            width: 340px; padding: 25px; 
+            background: rgba(245, 245, 245, 0.95); display: flex; flex-direction: column; 
+            gap: 18px; z-index: 100; height: 100vh; overflow-y: auto; border-left: 1px solid #ddd;
+        }
+        
+        #img-preview-container { 
+            width: 100%; height: 180px; background-color: #000; 
+            display: flex; align-items: center; justify-content: center; 
+            overflow: hidden; padding: 20px; 
+        }
+        #img-preview-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        #img-preview-container span { color: #888; font-size: 10px; letter-spacing: 1px; }
+
+        .control-group { display: flex; flex-direction: column; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        label { font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; }
+        .val-display { font-size: 10px; color: #000; font-family: monospace; font-weight: bold; }
+        
+        .color-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer !important; }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: #ccc; cursor: pointer !important; }
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; 
+            background: #000; margin-top: -5px; border: 1px solid #000; cursor: pointer !important;
+        }
+        input[type="range"]:active { cursor: pointer !important; }
+        
+        input[type="color"] { -webkit-appearance: none; border: 1px solid #ccc; width: 100%; height: 38px; cursor: pointer; background: none; }
+
+        button { padding: 12px; cursor: pointer; background: #000; border: 1px solid #000; color: #fff; font-size: 10px; font-weight: bold; transition: all 0.2s; }
+        button:hover { background: #333; }
+
+        .file-upload-box { position: relative; width: 100%; height: 40px; background-color: #e8e8e8; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        #fileInput { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 5;}
+        
+        /* 恢复原始名称显示结构 + ✕ 符号居中 */
+        #file-info { 
+            display: none; align-items: center; width: 100%; height: 100%; 
+            position: relative; z-index: 10;
+        }
+        #file-name-display { 
+            font-size: 11px; font-weight: bold; width: 100%; text-align: center; 
+            padding: 0 45px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            pointer-events: none;
+        }
+        .remove-btn { 
+            position: absolute; right: 0; top: 0;
+            width: 40px; height: 40px; 
+            display: flex; align-items: center; justify-content: center; 
+            color: #999; cursor: pointer !important; font-size: 16px; font-weight: bold; 
+            z-index: 50; pointer-events: auto;
+        }
+        .remove-btn:hover { color: #f44336; }
+
+        hr { border: 0; border-top: 1px solid #ddd; margin: 5px 0; }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <div id="p5-canvas"></div>
+</div>
+
+<div id="controls">
+    <div id="img-preview-container">
+        <span id="preview-placeholder">IMAGE PREVIEW</span>
+    </div>
+
+    <div class="control-group">
+        <label>上传图片 / UPLOAD IMAGE</label>
+        <div class="file-upload-box" style="margin-top:6px;">
+            <label id="upload-label" style="pointer-events:none; margin:0;">选择图片 / SELECT IMAGE</label>
+            <div id="file-info">
+                <span id="file-name-display"></span>
+                <div id="remove-file-btn" class="remove-btn">✕</div>
+            </div>
+            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="control-group">
+        <label>色彩设置 / COLORS</label>
+        <div class="color-row" style="margin-top:6px;">
+            <input type="color" id="bgColorPicker" value="#ffffff">
+            <input type="color" id="lineColorPicker" value="#000000">
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="control-group">
+        <div class="label-row"><label>图形缩放 / ZOOM</label><span class="val-display" id="val-zoom">1.0</span></div>
+        <input type="range" id="zoom" min="0.1" max="2.0" step="0.01" value="1.0">
+    </div>
+
+    <div class="control-group">
+        <div class="label-row"><label>采样密度 / DENSITY</label><span class="val-display" id="val-density">3.0</span></div>
+        <input type="range" id="density" min="1.5" max="6" step="0.1" value="3.0">
+    </div>
+
+    <div class="control-group">
+        <div class="label-row"><label>笔触长度 / LENGTH</label><span class="val-display" id="val-length">5</span></div>
+        <input type="range" id="length" min="3" max="25" value="5">
+    </div>
+
+    <div class="control-group">
+        <div class="label-row"><label>波浪起伏 / CURVE</label><span class="val-display" id="val-curve">20</span></div>
+        <input type="range" id="curve" min="5" max="60" value="20">
+    </div>
+
+    <div class="control-group">
+        <div class="label-row"><label>笔触粗细 / WEIGHT</label><span class="val-display" id="val-weight">1.4</span></div>
+        <input type="range" id="weight" min="0.5" max="5" step="0.1" value="1.4">
+    </div>
+
+    <div class="control-group">
+        <div class="label-row"><label>识别阈值 / THRESHOLD</label><span class="val-display" id="val-threshold">180</span></div>
+        <input type="range" id="threshold" min="0" max="255" value="180">
+    </div>
+
+    <hr>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+        <button id="save-jpg-btn">JPG</button>
+        <button id="save-png-btn">PNG</button>
+        <button id="save-svg-btn">SVG</button>
+    </div>
+</div>
+
+<script>
+    let img;
+    let baseWidth, baseHeight; 
+    let isOriginalPNG = false; 
+    
+    let config = {
+        lineColor: [0, 0, 0, 230], 
+        bgColor: [255, 255, 255] 
+    };
+
+    function setup() {
+        let h = windowHeight * 0.85; 
+        let w = h * 0.707; 
+        let cnv = createCanvas(w, h); 
+        cnv.parent('p5-canvas');
+        pixelDensity(1); 
+        noLoop(); 
+        
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+        document.getElementById('remove-file-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); resetApp();
+        });
+        
+        const sliders = ['zoom', 'density', 'length', 'curve', 'weight', 'threshold'];
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                document.getElementById('val-' + id).innerText = document.getElementById(id).value;
+                if(img) redraw();
+            });
+        });
+
+        ['bgColorPicker', 'lineColorPicker'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                if(id === 'bgColorPicker') config.bgColor = hexToRgb(document.getElementById(id).value);
+                else config.lineColor = [...hexToRgb(document.getElementById(id).value), 230];
+                redraw(); 
+            });
+        });
+
+        document.getElementById('save-jpg-btn').addEventListener('click', () => exportHighRes('jpg'));
+        document.getElementById('save-png-btn').addEventListener('click', () => exportHighRes('png'));
+        document.getElementById('save-svg-btn').addEventListener('click', exportSVG);
+    }
+
+    function draw() {
+        if (img) renderToContext(window, 1, false);
+        else background(config.bgColor);
+    }
+
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (file) {
+            isOriginalPNG = file.type === 'image/png';
+            document.getElementById('upload-label').style.display = 'none';
+            document.getElementById('file-info').style.display = 'flex';
+            document.getElementById('file-name-display').innerText = file.name;
+            document.getElementById('fileInput').style.pointerEvents = 'none';
+            let reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById('img-preview-container').innerHTML = `<img src="${event.target.result}">`;
+                loadImage(event.target.result, loadedImg => {
+                    img = loadedImg;
+                    img.loadPixels();
+                    calculateBaseDim();
+                    redraw();
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function resetApp() {
+        img = null;
+        document.getElementById('fileInput').value = ""; 
+        document.getElementById('fileInput').style.pointerEvents = 'auto'; 
+        document.getElementById('file-info').style.display = 'none';
+        document.getElementById('upload-label').style.display = 'block';
+        document.getElementById('img-preview-container').innerHTML = `<span>IMAGE PREVIEW</span>`;
+        redraw();
+    }
+
+    function calculateBaseDim() {
+        let canvasRatio = width / height, imgRatio = img.width / img.height;
+        if (imgRatio > canvasRatio) { baseWidth = width; baseHeight = width / imgRatio; }
+        else { baseHeight = height; baseWidth = height * imgRatio; }
+    }
+
+    function renderToContext(ctx, scale = 1, isExportPNG = false) {
+        if (isExportPNG) ctx.clear(); else ctx.background(config.bgColor);
+
+        randomSeed(999); noiseSeed(999);
+
+        const zoom = parseFloat(document.getElementById('zoom').value);
+        const step = parseFloat(document.getElementById('density').value) * scale;
+        const grainLen = parseInt(document.getElementById('length').value) * scale;
+        const curveVal = parseInt(document.getElementById('curve').value);
+        const weight = parseFloat(document.getElementById('weight').value) * scale;
+        const threshold = parseFloat(document.getElementById('threshold').value);
+
+        const currentDrawW = (baseWidth * zoom) * scale;
+        const currentDrawH = (baseHeight * zoom) * scale;
+        const offX = (ctx.width - currentDrawW) * 0.5;
+        const offY = (ctx.height - currentDrawH) * 0.5;
+
+        ctx.stroke(config.lineColor);
+        ctx.strokeWeight(weight);
+        ctx.strokeCap(ROUND);
+
+        const pix = img.pixels;
+        const imgW = img.width;
+        const imgH = img.height;
+
+        for (let x = offX; x < offX + currentDrawW; x += step) {
+            for (let y = offY; y < offY + currentDrawH; y += step) {
+                let u = (x - offX) / currentDrawW;
+                let v = (y - offY) / currentDrawH;
+                let ix = Math.floor(u * imgW);
+                let iy = Math.floor(v * imgH);
+                if(ix < 0 || ix >= imgW || iy < 0 || iy >= imgH) continue;
+                let idx = (iy * imgW + ix) << 2; 
+                
+                if (isOriginalPNG) {
+                    if (pix[idx + 3] < 15 || random() > 0.7) continue; 
+                } else {
+                    if (pix[idx] > 250 && pix[idx+1] > 250 && pix[idx+2] > 250) continue; 
+                    let bright = (pix[idx] + pix[idx+1] + pix[idx+2]) / 3;
+                    if (threshold < 255) {
+                        if (bright > threshold || random() > (1.0 - (bright / threshold) * 0.8)) continue;
+                    } else if (random() > 0.7) continue;
+                }
+
+                let angle = noise(u * curveVal * 0.5, v * curveVal * 0.5) * Math.PI * 3; 
+                let ox = x + (random() - 0.5) * step;
+                let oy = y + (random() - 0.5) * step;
+                let l = grainLen * (0.6 + random() * 0.6);
+                ctx.line(ox, oy, ox + Math.cos(angle) * l, oy + Math.sin(angle) * l);
+            }
+        }
+    }
+
+    function exportHighRes(format) {
+        if (!img) return;
+        const highResH = 4961; 
+        const highResW = Math.round(highResH * 0.707);
+        const scale = highResH / height;
+        let pg = createGraphics(highResW, highResH);
+        renderToContext(pg, scale, format === 'png');
+        pg.save("Hatch_A3_Print." + format);
+        pg.remove();
+    }
+
+    function exportSVG() {
+        if (!img) return;
+        randomSeed(999); noiseSeed(999);
+        const zoom = parseFloat(document.getElementById('zoom').value);
+        const step = parseFloat(document.getElementById('density').value);
+        const grainLen = parseInt(document.getElementById('length').value);
+        const curveVal = parseInt(document.getElementById('curve').value);
+        const weight = parseFloat(document.getElementById('weight').value);
+        const threshold = parseFloat(document.getElementById('threshold').value);
+
+        const currentDrawW = baseWidth * zoom, currentDrawH = baseHeight * zoom;
+        const offX = (width - currentDrawW) * 0.5, offY = (height - currentDrawH) * 0.5;
+        const imgW = img.width, imgH = img.height, pix = img.pixels;
+        const lineHex = rgbToHex(config.lineColor[0], config.lineColor[1], config.lineColor[2]);
+
+        let paths = [];
+        for (let x = offX; x < offX + currentDrawW; x += step) {
+            for (let y = offY; y < offY + currentDrawH; y += step) {
+                let u = (x - offX) / currentDrawW, v = (y - offY) / currentDrawH;
+                let ix = Math.floor(u * imgW), iy = Math.floor(v * imgH);
+                if(ix < 0 || ix >= imgW || iy < 0 || iy >= imgH) continue;
+                let idx = (iy * imgW + ix) << 2; 
+
+                if (isOriginalPNG) { if (pix[idx + 3] < 15 || random() > 0.7) continue; }
+                else {
+                    if (pix[idx] > 250 && pix[idx+1] > 250 && pix[idx+2] > 250) continue;
+                    let bright = (pix[idx] + pix[idx+1] + pix[idx+2]) / 3;
+                    if (threshold < 255) { if (bright > threshold || random() > (1.0 - (bright / threshold) * 0.8)) continue; }
+                    else if (random() > 0.7) continue;
+                }
+
+                let angle = noise(u * curveVal * 0.5, v * curveVal * 0.5) * Math.PI * 3; 
+                let ox = x + (random() - 0.5) * step, oy = y + (random() - 0.5) * step;
+                let l = grainLen * (0.6 + random() * 0.6);
+                let dx = Math.cos(angle) * l, dy = Math.sin(angle) * l;
+                let nx = -dy * (weight / l * 0.5), ny = dx * (weight / l * 0.5);
+                let p1x = (ox - nx).toFixed(2), p1y = (oy - ny).toFixed(2);
+                let p2x = (ox + dx - nx).toFixed(2), p2y = (oy + dy - ny).toFixed(2);
+                let p3x = (ox + dx + nx).toFixed(2), p3y = (oy + dy + ny).toFixed(2);
+                let p4x = (ox + nx).toFixed(2), p4y = (oy + ny).toFixed(2);
+                paths.push(`M${p1x},${p1y} L${p2x},${p2y} L${p3x},${p3y} L${p4x},${p4y} Z`);
+            }
+        }
+
+        let svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+            <rect width="100%" height="100%" fill="${rgbToHex(config.bgColor[0], config.bgColor[1], config.bgColor[2])}"/>
+            <path fill="${lineHex}" d="${paths.join(' ')}"/></svg>`;
+
+        let blob = new Blob([svgString], {type: 'image/svg+xml'});
+        let url = URL.createObjectURL(blob);
+        let link = document.createElement('a');
+        link.href = url; link.download = "Hatch_Vector_Optimized.svg"; link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function hexToRgb(hex) {
+        let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        return [r, g, b];
+    }
+    function rgbToHex(r, g, b) {
+        return "#" + ((1 << 24) + (Math.floor(r) << 16) + (Math.floor(g) << 8) + Math.floor(b)).toString(16).slice(1);
+    }
+</script>
+</body>
+</html>
+    
+  </body>
+  
+</html>
